@@ -1,0 +1,146 @@
+{
+	"info": {
+		"_postman_id": "28f1cfc7-90cb-4c95-bed3-3c89521a867b",
+		"name": "Inventory Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "49915607",
+		"_collection_link": "https://bogdandzikovskiy-291446.postman.co/workspace/%D0%91%D0%BE%D0%B3%D0%B4%D0%B0%D0%BD-%D0%94%D0%B7%D1%96%D0%BA%D0%BE%D0%B2%D1%81%D1%8C%D0%BA%D0%B8%D0%B9's-Workspace~229fc051-f431-4b93-80da-60f29465edbf/collection/49915607-28f1cfc7-90cb-4c95-bed3-3c89521a867b?action=share&source=collection_link&creator=49915607"
+	},
+	"item": [
+		{
+			"name": "/register",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "inventory_name",
+							"value": "Телефон",
+							"type": "text"
+						},
+						{
+							"key": "description",
+							"value": "Samsung A52",
+							"type": "text"
+						},
+						{
+							"key": "photo",
+							"type": "file",
+							"src": "/C:/Users/bodya/Documents/gitprojrct/backend-course-2025-6/sm_a526_g.jpg"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://127.0.0.1:3000/register\n",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "3000",
+					"path": [
+						"register\n"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/inventory",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "/inventory/:id",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "/inventory/:id",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "/inventory/:id/photo",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "/inventory/:id/photo",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "photo",
+							"type": "file",
+							"src": []
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE /inventory/:id",
+			"request": {
+				"method": "DELETE",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "/search",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "id",
+							"value": "",
+							"type": "text"
+						},
+						{
+							"key": "has_photo",
+							"value": "",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": ""
+				}
+			},
+			"response": []
+		}
+	]
+}
