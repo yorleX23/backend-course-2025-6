@@ -1,0 +1,21 @@
+{
+  "name": "backend-course-2025-6",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yorleX23/backend-course-2025-6.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yorleX23/backend-course-2025-6/issues"
+  },
+  "homepage": "https://github.com/yorleX23/backend-course-2025-6#readme",
+  "description": ""
+}
