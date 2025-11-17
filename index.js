@@ -8,85 +8,106 @@ const { program } = require('commander');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 
-// =====================================================================
-// 1. CLI аргументи
-// =====================================================================
+// ---------------------------
+// 1. CLI OPTIONS
+// ---------------------------
 program
   .requiredOption('-H, --host <host>', 'server host')
   .requiredOption('-P, --port <port>', 'server port')
   .requiredOption('-C, --cache <cacheDir>', 'cache directory');
 
 program.parse(process.argv);
-const opts = program.opts();
+const options = program.opts();
 
-const HOST = opts.host;
-const PORT = opts.port;
-const CACHE_DIR = path.resolve(process.cwd(), opts.cache);
+const HOST = options.host;
+const PORT = options.port;
+const CACHE_DIR = path.resolve(process.cwd(), options.cache);
 const INVENTORY_FILE = path.join(CACHE_DIR, 'inventory.json');
 
-console.log("SERVER CONFIG:", opts);
+console.log("CLI OPTIONS:", options);
 
-// =====================================================================
-// 2. Ініціалізація кешу
-// =====================================================================
+// ---------------------------
+// 2. Create cache dir
+// ---------------------------
 async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
-
   if (!existsSync(INVENTORY_FILE)) {
     await fs.writeFile(INVENTORY_FILE, "[]", "utf-8");
   }
 }
 
-// =====================================================================
-// 3. "База даних" JSON
-// =====================================================================
+// ---------------------------
+// 3. Load/save JSON
+// ---------------------------
 async function loadInventory() {
   try {
-    const raw = await fs.readFile(INVENTORY_FILE, "utf-8");
-    return JSON.parse(raw);
+    const data = await fs.readFile(INVENTORY_FILE, "utf-8");
+    return JSON.parse(data);
   } catch {
     return [];
   }
 }
 
-async function saveInventory(inv) {
-  await fs.writeFile(INVENTORY_FILE, JSON.stringify(inv, null, 2), "utf-8");
+async function saveInventory(inventory) {
+  await fs.writeFile(INVENTORY_FILE, JSON.stringify(inventory, null, 2), "utf-8");
 }
 
-// =====================================================================
-// 4. Створення Express
-// =====================================================================
+// ---------------------------
+// 4. App
+// ---------------------------
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// =====================================================================
-// 5. Multer (для завантаження фото)
-// =====================================================================
 const upload = multer({ dest: CACHE_DIR });
 
-// =====================================================================
-// 6. Формування URL фото
-// =====================================================================
+// Utility
 function buildPhotoUrl(req, id) {
   return `${req.protocol}://${req.get("host")}/inventory/${id}/photo`;
 }
 
-// =====================================================================
-// 7. HTML форми
-// =====================================================================
-app.get("/RegisterForm.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "RegisterForm.html"));
+// ---------------------------
+// 5. HTML Forms
+// ---------------------------
+app.get('/RegisterForm.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'RegisterForm.html'));
 });
 
-app.get("/SearchForm.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "SearchForm.html"));
+app.get('/SearchForm.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'SearchForm.html'));
 });
 
-// =====================================================================
-// 8. POST /register
-// =====================================================================
-app.post("/register", upload.single("photo"), async (req, res) => {
+// ---------------------------
+// 6. ROUTES WITH SWAGGER DOCS
+// ---------------------------
+
+/**
+ * @openapi
+ * /register:
+ *   post:
+ *     summary: Register new item
+ *     description: Creates a new inventory item with optional photo.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               inventory_name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Created
+ *       400:
+ *         description: inventory_name is required
+ */
+app.post('/register', upload.single("photo"), async (req, res) => {
   const { inventory_name, description } = req.body;
 
   if (!inventory_name || inventory_name.trim() === "") {
@@ -115,25 +136,43 @@ app.post("/register", upload.single("photo"), async (req, res) => {
   });
 });
 
-// =====================================================================
-// 9. GET /inventory
-// =====================================================================
-app.get("/inventory", async (req, res) => {
+/**
+ * @openapi
+ * /inventory:
+ *   get:
+ *     summary: Get all items
+ *     responses:
+ *       200:
+ *         description: OK
+ */
+app.get('/inventory', async (req, res) => {
   const inventory = await loadInventory();
-  const mapped = inventory.map(item => ({
+  const result = inventory.map(item => ({
     id: item.id,
     name: item.name,
     description: item.description,
     photoUrl: item.photoPath ? buildPhotoUrl(req, item.id) : null
   }));
 
-  res.status(200).json(mapped);
+  res.status(200).json(result);
 });
 
-// =====================================================================
-// 10. GET /inventory/:id
-// =====================================================================
-app.get("/inventory/:id", async (req, res) => {
+/**
+ * @openapi
+ * /inventory/{id}:
+ *   get:
+ *     summary: Get item by ID
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: Found
+ *       404:
+ *         description: Not found
+ */
+app.get('/inventory/:id', async (req, res) => {
   const inventory = await loadInventory();
   const item = inventory.find(x => x.id === req.params.id);
 
@@ -147,10 +186,32 @@ app.get("/inventory/:id", async (req, res) => {
   });
 });
 
-// =====================================================================
-// 11. PUT /inventory/:id
-// =====================================================================
-app.put("/inventory/:id", async (req, res) => {
+/**
+ * @openapi
+ * /inventory/{id}:
+ *   put:
+ *     summary: Update item info
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Updated
+ *       404:
+ *         description: Not found
+ */
+app.put('/inventory/:id', async (req, res) => {
   const inventory = await loadInventory();
   const item = inventory.find(x => x.id === req.params.id);
 
@@ -169,9 +230,20 @@ app.put("/inventory/:id", async (req, res) => {
   });
 });
 
-// =====================================================================
-// 12. GET /inventory/:id/photo  (ВИДАЧА ФОТО)
-// =====================================================================
+/**
+ * @openapi
+ * /inventory/{id}/photo:
+ *   get:
+ *     summary: Get item photo
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *     responses:
+ *       200:
+ *         description: image/jpeg
+ *       404:
+ *         description: Not found
+ */
 app.get("/inventory/:id/photo", async (req, res) => {
   const inventory = await loadInventory();
   const item = inventory.find(x => x.id === req.params.id);
@@ -180,21 +252,37 @@ app.get("/inventory/:id/photo", async (req, res) => {
     return res.status(404).json({ error: "Photo not found" });
   }
 
-  try {
-    const data = await fs.readFile(item.photoPath);
-
-    res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Content-Disposition", "inline"); // показує фото в браузері
-    res.end(data);
-  } catch {
-    res.status(404).json({ error: "Photo not found" });
-  }
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Content-Disposition", "inline");
+  res.sendFile(path.resolve(item.photoPath));
 });
 
-// =====================================================================
-// 13. PUT /inventory/:id/photo (оновлення фото)
-// =====================================================================
-app.put("/inventory/:id/photo", upload.single("photo"), async (req, res) => {
+/**
+ * @openapi
+ * /inventory/{id}/photo:
+ *   put:
+ *     summary: Update item photo
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Photo updated
+ *       400:
+ *         description: No photo
+ *       404:
+ *         description: Not found
+ */
+app.put('/inventory/:id/photo', upload.single("photo"), async (req, res) => {
   const inventory = await loadInventory();
   const item = inventory.find(x => x.id === req.params.id);
 
@@ -210,16 +298,25 @@ app.put("/inventory/:id/photo", upload.single("photo"), async (req, res) => {
   });
 });
 
-// =====================================================================
-// 14. DELETE /inventory/:id
-// =====================================================================
-app.delete("/inventory/:id", async (req, res) => {
+/**
+ * @openapi
+ * /inventory/{id}:
+ *   delete:
+ *     summary: Delete item
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *     responses:
+ *       200:
+ *         description: Deleted
+ *       404:
+ *         description: Not found
+ */
+app.delete('/inventory/:id', async (req, res) => {
   const inventory = await loadInventory();
   const index = inventory.findIndex(x => x.id === req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: "Not found" });
-  }
+  if (index === -1) return res.status(404).json({ error: "Not found" });
 
   const [removed] = inventory.splice(index, 1);
   await saveInventory(inventory);
@@ -227,10 +324,28 @@ app.delete("/inventory/:id", async (req, res) => {
   res.status(200).json({ message: "Deleted", id: removed.id });
 });
 
-// =====================================================================
-// 15. POST /search
-// =====================================================================
-app.post("/search", async (req, res) => {
+/**
+ * @openapi
+ * /search:
+ *   post:
+ *     summary: Search item by ID
+ *     requestBody:
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *               has_photo:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Found
+ *       404:
+ *         description: Not found
+ */
+app.post('/search', async (req, res) => {
   const { id, has_photo } = req.body;
   const inventory = await loadInventory();
   const item = inventory.find(x => x.id === id);
@@ -251,33 +366,33 @@ app.post("/search", async (req, res) => {
   });
 });
 
-// =====================================================================
-// 16. Swagger документація
-// =====================================================================
+// ---------------------------
+// 7. SWAGGER
+// ---------------------------
 const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.0",
-    info: { title: "Inventory Service API", version: "1.0.0" }
+    info: { title: "Inventory API", version: "1.0.0" }
   },
   apis: ['./index.js']
 });
 
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// =====================================================================
-// 17. 405 Method Not Allowed
-// =====================================================================
+// ---------------------------
+// 8. 405
+// ---------------------------
 app.use((req, res) => {
   res.status(405).send("Method not allowed");
 });
 
-// =====================================================================
-// 18. START SERVER
-// =====================================================================
+// ---------------------------
+// 9. START SERVER
+// ---------------------------
 async function start() {
   await ensureCacheDir();
   http.createServer(app).listen(PORT, HOST, () => {
-    console.log(`SERVER RUNNING → http://${HOST}:${PORT}`);
+    console.log(`SERVER RUNNING AT http://${HOST}:${PORT}`);
   });
 }
 
